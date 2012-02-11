@@ -1,4 +1,4 @@
 Simple implementation of streams (delayed lists) as
 discussed in chapter 3.5 of "Structure and Interpretation
 of Computer Programs" implemented in JavaScript.
-Tested with nodejs 0.4.10.
+Tested with nodejs 0.6.10.
