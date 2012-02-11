@@ -1,69 +1,102 @@
-// construct a new cell (object with "car" and "cdr")
-// containing given car as "car" and cdr as "cdr"
-var cons = function (car, cdr) {
-    return {
-        "car": car,
-        "cdr": cdr,
-        "toString": function () {
-            return "(" + this.car + " . " +
+(function () {
+    'use strict';
+
+    var cons, streamCons, streamCar, emptyStream,
+        streamCdr, streamTake, streamMap,
+        iterate, ones;
+
+    // construct a new cell (object with "car" and "cdr")
+    // containing given car as "car" and cdr as "cdr"
+    cons = function (car, cdr) {
+        var toString;
+
+        // note that toString doesn't use this.car
+        // or this.cdr, so the list is immutable
+        toString = function () {
+            return "(" + car + " . " +
                 (cdr ? cdr.toString() : "nil") + ")";
+        };
+
+        return {
+            car: car,
+            cdr: cdr,
+            toString: toString
+        };
+    };
+
+    // delay and force should only be used
+    // by streamCons and streamCdr, streamCar, emptyStream
+    (function () {
+        var delay, force;
+
+        // delay the call to f with the given arguments until it is force()d
+    // i.e.: simply return a function which calls f
+        delay = function (f) {
+            var args = Array.prototype.slice.call(arguments, 1);
+            return function () {
+                return f.apply(null, args);
+            };
+        };
+
+        force = function (delayed) {
+            return delayed();
+        };
+
+        streamCons = function (car, cdr) {
+            return cons(car, delay(cdr));
+        };
+
+        streamCar = function (cell) {
+            return cell.car;
+        };
+
+        streamCdr = function (cell) {
+            return force(cell.cdr);
+        };
+
+        emptyStream = null;
+    }());
+
+    streamMap = function (f, list) {
+        if (list === emptyStream) {
+            return emptyStream;
         }
+        return streamCons(f(streamCar(list)), function () {
+            return streamMap(f, streamCdr(list));
+        });
     };
-};
 
-console.log(cons(1, cons(2, null)).toString());
-
-// delay the call to f with the given arguments until it is force()d
-// i.e.: simply return a function which calls f
-var delay = function (f) {
-    var args = Array.prototype.slice.call(arguments, 1);
-    return function () {
-        return f.apply(null, args);
+    streamTake = function (n, list) {
+        if (n === 0 || list === emptyStream) {
+            return emptyStream;
+        }
+        return cons(list.car, streamTake(n - 1, streamCdr(list)));
     };
-};
 
-var force = function (delayed) {
-    return delayed();
-};
+    iterate = function (init, f) {
+        return streamCons(init, function () {
+            return iterate(f(init), f);
+        });
+    };
 
-var delayed = delay(function (x) {
-    console.log(x);
-}, 5);
-force(delayed);
+    ones = function () {
+        return streamCons(1, ones);
+    };
 
-var streamCons = function (car, cdr) {
-    return cons(car, delay(cdr));
-};
+    // ------ some tests
 
-var streamCar = function (cell) {
-    return cell.car;
-};
+    console.log(cons(1, cons(2, emptyStream)).toString());
 
-var streamCdr = function (cell) {
-    return force(cell.cdr);
-};
+    console.log(streamTake(10, iterate(0, function (x) {
+        return x + 1;
+    })).toString());
 
-var map = function (f, list) {
-    if (!list) return null;
-    return cons(f(list.car), delay(map, f, list.cdr));
-};
+    console.log(streamTake(10, ones()).toString());
 
-var streamTake = function (n, list) {
-    if (n == 0 || !list) return null;
-    return cons(list.car, streamTake(n - 1, streamCdr(list)));
-}
+    console.log(streamTake(10, streamMap(function (x) {
+        return x + 1;
+    }, ones())).toString());
 
-var iterate = function (init, f) {
-    return cons(init, delay(iterate, f(init), f));
-};
+    //----------
 
-console.log(streamTake(10, iterate(0, function (x) {
-    return x + 1;
-})).toString());
-
-var ones = function () {
-    return cons(1, delay(ones));
-};
-
-console.log(streamTake(10, ones()).toString());
-
+}());
